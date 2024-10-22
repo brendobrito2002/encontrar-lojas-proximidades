@@ -13,6 +13,7 @@ const connect = () => {
         })
         .catch((err) => {
             console.error('Erro ao conectar com o mongoDB:', err);
+            process.exit(1);
         });
 };
 
