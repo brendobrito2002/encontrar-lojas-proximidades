@@ -1,4 +1,5 @@
 const Store = require('../models/storeModel');
+const { getAddressByCep } = require('../utils/viaCepService');
 
 // criar loja
 exports.createStore = async (req, res) => {
@@ -9,7 +10,21 @@ exports.createStore = async (req, res) => {
     }
 
     try{
-        const newStore = new Store({ name, cep });
+        const address = await getAddressByCep(cep);
+
+        if(address.erro){
+            return res.status(400).json({ message: 'CEP inválido.'});
+        }
+
+        const newStore = new Store({
+            name, 
+            cep,
+            rua: address.logradouro,
+            bairro: address.bairro,
+            cidade: address.localidade,
+            estado: address.estado
+            });
+
         await newStore.save();
         res.status(201).json(newStore);
     }catch(error){
@@ -48,18 +63,36 @@ exports.updateStore = async (req, res) => {
     const { name, cep } = req.body;
 
     try{
-        const store = await Store.findByIdAndUpdate(
-            req.params.id,
-            { name, cep },
-            { new: true }
-        );
+        const store = await Store.findById(req.params.id);
 
         if(!store){
             return res.status(400).json({ message: 'Loja não encontrado.'});
         }
 
-        res.status(200).json(store);
+        if (rua || bairro || cidade || estado) {
+            return res.status(400).json({ message: 'Não é permitido modificar os campos de endereço (rua, bairro, cidade, estado).' });
+        }
 
+        if(name){
+            store.name = name;
+        }
+
+        if(cep && cep !== store.cep){
+            const address = await getAddressByCep(cep);
+
+            if(address.erro){
+                return res.status(400).json({ message: 'CEP inválido.'});
+            }
+
+            store.cep = cep;
+            store.rua = address.logradouro;
+            store.bairro = address.bairro;
+            store.cidade = address.localidade;
+            store.estado = address.uf;
+        }
+
+        const updateStore = await store.save();
+        res.status(200).json(updateStore);
     }catch(error){
         res.status(500).json({ message: 'Erro ao atualizar a loja.'});
     }
