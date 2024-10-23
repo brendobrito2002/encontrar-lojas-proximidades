@@ -7,16 +7,15 @@ const validateCep = (cep) => {
 const storeSchema = mongoose.Schema({
     name: {
         type: String,
-        required: true,
+        required: [true, 'Toda loja deve possuir um nome.'],
         trim: true,
-        minlength: 3,
-        maxlength: 20
+        minlength: [3, 'Um nome deve possuir no mínimo 3 caracteres.'],
+        maxlength: [20, 'Um nome deve possuir no máximo 20 caracteres.']
     },
     cep: {
         type: String,
-        required: true,
+        required: [true, 'Uma loja deve possuir um CEP.'],
         trim: true,
-        unique: true,
         validate: {
             validator: validateCep,
             message: 'CEP inválido. Deve conter 8 dígitos númericos.'
