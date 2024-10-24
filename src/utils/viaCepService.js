@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const getAddressByCep = async(cep) => {
+const getAddressFromCep = async(cep) => {
     try{
         const response = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
         return response.data;
@@ -9,4 +9,4 @@ const getAddressByCep = async(cep) => {
     }
 };
 
-module.exports = { getAddressByCep };
+module.exports = { getAddressFromCep };

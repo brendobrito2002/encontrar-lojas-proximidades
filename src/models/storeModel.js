@@ -7,7 +7,7 @@ const validateCep = (cep) => {
 const storeSchema = mongoose.Schema({
     name: {
         type: String,
-        required: [true, 'Toda loja deve possuir um nome.'],
+        required: [true, 'Uma loja deve possuir um nome.'],
         trim: true,
         minlength: [3, 'Um nome deve possuir no mínimo 3 caracteres.'],
         maxlength: [20, 'Um nome deve possuir no máximo 20 caracteres.']
@@ -32,6 +32,12 @@ const storeSchema = mongoose.Schema({
     },
     estado: {
         type: String
+    },
+    lat: {
+        type: Number
+    },
+    lng: {
+        type: Number
     }
 });
 
