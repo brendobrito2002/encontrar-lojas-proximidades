@@ -1,6 +1,8 @@
 const Store = require('../models/storeModel');
 const logger = require('../utils/logger');
-const { getAddressByCep } = require('../utils/viaCepService');
+const { getAddressFromCep } = require('../utils/viaCepService');
+const { getCoordinatesFromCep } = require('../utils/geocodeService');
+const { calculateDistance } = require('../utils/haversine');
 
 // criar loja
 exports.createStore = async (req, res) => {
@@ -12,11 +14,18 @@ exports.createStore = async (req, res) => {
     }
 
     try {
-        const address = await getAddressByCep(cep);
+        const address = await getAddressFromCep(cep);
 
         if (address.erro) {
             logger.error('CEP inválido na criação da loja.', { cep });
             return res.status(400).json({ message: 'CEP inválido.' });
+        }
+
+        const coordinates = await getCoordinatesFromCep(cep);
+
+        if(coordinates.erro){
+            logger.error('Coordenadas deu ruim.');
+            return res.status(400).json({ message: 'Coordenadas erro' });
         }
 
         const newStore = new Store({
@@ -25,7 +34,9 @@ exports.createStore = async (req, res) => {
             rua: address.logradouro,
             bairro: address.bairro,
             cidade: address.localidade,
-            estado: address.estado
+            estado: address.estado,
+            lat: coordinates.lat,
+            lng: coordinates.lng
         });
 
         await newStore.save();
@@ -82,9 +93,9 @@ exports.updateStore = async (req, res) => {
             return res.status(400).json({ message: 'Loja não encontrada.' });
         }
 
-        if (rua || bairro || cidade || estado) {
+        if (rua || bairro || cidade || estado || lat || lng) {
             logger.warn('Tentativa de modificar campos de endereço protegidos.', { storeId: req.params.id });
-            return res.status(400).json({ message: 'Não é permitido modificar os campos de endereço (rua, bairro, cidade, estado).' });
+            return res.status(400).json({ message: 'Não é permitido modificar os campos de endereço (rua, bairro, cidade, estado, lat, lng).' });
         }
 
         if (name) {
@@ -99,11 +110,20 @@ exports.updateStore = async (req, res) => {
                 return res.status(400).json({ message: 'CEP inválido.' });
             }
 
+            const coordinates = await getCoordinatesFromCep(cep);
+
+            if(coordinates.erro){
+                logger.error('Coordenadas deu ruim.');
+                return res.status(400).json({ message: 'Coordenadas erro' });
+            }
+    
             store.cep = cep;
             store.rua = address.logradouro;
             store.bairro = address.bairro;
             store.cidade = address.localidade;
             store.estado = address.estado;
+            store.lat = coordinates.lat;
+            store.lng = coordinates.lng;
         }
 
         const updatedStore = await store.save();
@@ -132,5 +152,90 @@ exports.deleteStore = async (req, res) => {
     } catch (error) {
         logger.error('Erro ao deletar loja.', { error: error.message, storeId: req.params.id });
         res.status(500).json({ message: 'Erro ao deletar a loja.' });
+    }
+};
+
+// encontrar lojas próximas ao cep
+exports.findAllStoresNearCep = async (req, res) => {
+    const { cep } = req.params;
+
+    console.log(`Buscando lojas próximas ao CEP: ${cep}`);
+
+    try {
+        const { lat, lng } = await getCoordinatesFromCep(cep);
+        console.log(`Coordenadas encontradas - Latitude: ${lat}, Longitude: ${lng}`);
+
+        const stores = await Store.find();
+        console.log(`Total de lojas encontradas: ${stores.length}`);
+
+        const nearbyStores = stores.filter(store => {
+            console.log(`Dados da loja ${store.name}:`, store);
+            if (store.cep === cep) {
+                console.log(`A loja ${store.name} tem o mesmo CEP da pesquisa e será ignorada.`);
+                return false;
+            }
+            const distance = calculateDistance(lat, lng, store.lat, store.lng);
+            console.log(`Distância para a loja ${store.name}: ${distance} km`);
+            return distance <= 100;
+        });
+
+        if (nearbyStores.length > 0) {
+            console.log(`Lojas encontradas dentro do raio de 100 km: ${nearbyStores.length}`);
+            res.status(200).json(nearbyStores);
+        } else {
+            console.log('Nenhuma loja encontrada dentro do raio de 100 km.');
+            res.status(404).json({ message: 'Nenhuma loja encontrada dentro do raio de 100 km.' });
+        }
+    } catch (error) {
+        console.error(`Erro: ${error.message}`);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// encontrar a loja mais próxima ao CEP
+exports.findClosestStoreByCep = async (req, res) => {
+    const { cep } = req.params;
+
+    console.log(`Buscando a loja mais próxima ao CEP: ${cep}`);
+
+    try {
+        const { lat, lng } = await getCoordinatesFromCep(cep);
+        console.log(`Coordenadas encontradas - Latitude: ${lat}, Longitude: ${lng}`);
+
+        const stores = await Store.find();
+        console.log(`Total de lojas encontradas: ${stores.length}`);
+
+        let closestStore = null;
+        let shortestDistance = Infinity;
+
+        stores.forEach(store => {
+            if (store.cep === cep) {
+                console.log(`A loja ${store.name} tem o mesmo CEP da pesquisa e será ignorada.`);
+                return;
+            }
+            const distance = calculateDistance(lat, lng, store.lat, store.lng);
+            console.log(`Distância para a loja ${store.name}: ${distance} km`);
+
+            if (distance < shortestDistance) {
+                shortestDistance = distance;
+                closestStore = store;
+            }
+        });
+
+        if (closestStore && shortestDistance <= 100) {
+            console.log(`A loja mais próxima é: ${closestStore.name}, Distância: ${shortestDistance} km`);
+            res.status(200).json({
+                cep: closestStore.cep,
+                name: closestStore.name,
+                distance: shortestDistance,
+                address: `${closestStore.rua}, ${closestStore.bairro}, ${closestStore.cidade} - ${closestStore.estado}`
+            });
+        } else {
+            console.log('Nenhuma loja encontrada dentro do raio de 100 km.');
+            res.status(404).json({ message: 'Nenhuma loja encontrada dentro do raio de 100 km.' });
+        }
+    } catch (error) {
+        console.error(`Erro: ${error.message}`);
+        res.status(500).json({ message: error.message });
     }
 };

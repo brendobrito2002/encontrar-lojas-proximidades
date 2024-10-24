@@ -11,4 +11,10 @@ router.route('/stores/:id')
     .patch(storeController.updateStore)
     .delete(storeController.deleteStore);
 
+router.route('/stores/near/:cep')
+    .get(storeController.findAllStoresNearCep);
+    
+router.route('/stores/closest/:cep')
+    .get(storeController.findClosestStoreByCep);
+    
 module.exports = router;
