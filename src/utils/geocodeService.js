@@ -1,8 +1,12 @@
 const axios = require('axios');
-const API_KEY = '82740c82925e436cbad2268c2371a88a';
+const dotenv = require('dotenv');
+
+dotenv.config({ path: './config.env' });
+
+const USE_API_KEY = process.env.API_KEY;
 
 async function getCoordinatesFromCep(cep) {
-    const url = `https://api.opencagedata.com/geocode/v1/json?q=${cep}&key=${API_KEY}`;
+    const url = `https://api.opencagedata.com/geocode/v1/json?q=${cep}&key=${USE_API_KEY}`;
     
     try {
         const response = await fetch(url);
@@ -19,7 +23,7 @@ async function getCoordinatesFromCep(cep) {
         }
     } catch (error) {
         console.error(`Erro ao buscar coordenadas: ${error.message}`);
-        throw error; // Lança o erro para ser tratado na camada superior
+        throw error;
     }
 }
 
