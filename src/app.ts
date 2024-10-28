@@ -3,7 +3,7 @@ const app = express();
 const storeRoutes = require('./routes/storeRoutes');
 
 require('dotenv').config();
-require('./database/connection');
+require('./config/connection');
 
 const port = process.env.PORT || 3000;
 
