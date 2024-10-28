@@ -9,8 +9,8 @@ async function getCoordinatesFromCep(cep) {
     const url = `https://api.opencagedata.com/geocode/v1/json?q=${cep}&key=${USE_API_KEY}`;
     
     try {
-        const response = await fetch(url);
-        const data = await response.json();
+        const response = await axios.get(url);
+        const data = response.data;
 
         if (data.results && data.results.length > 0) {
             const { geometry } = data.results[0];
