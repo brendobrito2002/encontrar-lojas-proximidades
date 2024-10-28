@@ -103,7 +103,7 @@ exports.updateStore = async (req, res) => {
         }
 
         if (cep && cep !== store.cep) {
-            const address = await getAddressByCep(cep);
+            const address = await getAddressFromCep(cep);
 
             if (address.erro) {
                 logger.error('CEP inválido ao tentar atualizar loja.', { cep });
