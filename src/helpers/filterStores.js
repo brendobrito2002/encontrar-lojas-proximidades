@@ -1,7 +1,7 @@
 const Store = require("../models/storeModel");
 const logger = require("../config/logger");
 const { getCoordinatesFromCep } = require("../services/geocodeService");
-const { calculateDistance } = require("./haversine");
+const { calculateDistance } = require("../utils/haversine");
 
 async function filterNearbyStores(cep) {
   const { lat, lng } = await getCoordinatesFromCep(cep);

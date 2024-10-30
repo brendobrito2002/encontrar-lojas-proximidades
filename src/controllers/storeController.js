@@ -1,9 +1,8 @@
 const Store = require("../models/storeModel");
 const logger = require("../config/logger");
-const { validateAndGetAddressAndCoords } = require("../utils/locationValidate");
-const { filterNearbyStores, filterClosestStore } = require("../utils/filterStores");
-const { validateStore } = require("../utils/validateStore");
-const { validateImmutableFields } = require("../utils/validateImmutableFields");
+const { filterNearbyStores, filterClosestStore } = require("../helpers/filterStores");
+const { validateStore, validateStoreData, validateAndGetAddressAndCoords, 
+      validateImmutableFields } = require('../helpers/storeValidate');
 
 // criar loja
 exports.createStore = async (req, res) => {
@@ -15,6 +14,7 @@ exports.createStore = async (req, res) => {
   }
 
   try {
+    validateStoreData(name, cep);
     const { address, coordinates } = await validateAndGetAddressAndCoords(cep);
 
     const newStore = new Store({
@@ -33,7 +33,7 @@ exports.createStore = async (req, res) => {
     logger.info("Loja criada com sucesso.", { storeId: newStore._id });
     res.status(201).json({ message: "Loja criada com sucesso!", store: newStore });
   } catch (error) {
-    logger.error("Erro interno ao criar a loja.", { error: error.message });
+    logger.error("Erro ao criar a loja.", { error: error.message });
     res.status(500).json({ message: error.message });
   }
 };
@@ -42,11 +42,12 @@ exports.createStore = async (req, res) => {
 exports.getAllStores = async (req, res) => {
   try {
     const stores = await Store.find();
+
     logger.info("Todas as lojas foram buscadas com sucesso.");
     res.status(200).json(stores);
   } catch (error) {
     logger.error("Erro ao buscar todas as lojas.", { error: error.message });
-    res.status(500).json({ message: "Erro interno ao tentar buscar lojas." });
+    res.status(500).json({ message: "Erro ao tentar buscar lojas." });
   }
 };
 
@@ -60,7 +61,7 @@ exports.getStoreById = async (req, res) => {
     res.status(200).json(store);
   } catch (error) {
     logger.error("Erro ao buscar loja por ID.", { error: error.message, storeId: req.params.id });
-    res.status(500).json({ message: "Erro interno ao tentar buscar a loja." });
+    res.status(500).json({ message: "Erro ao tentar buscar a loja." });
   }
 };
 
@@ -71,10 +72,11 @@ exports.updateStore = async (req, res) => {
   try {
     const store = await Store.findById(req.params.id);
     if (!validateStore(store, req, res)) return;
-
     if (validateImmutableFields(req.body, req, res)) return;
 
-    if (name) store.name = name;
+    if (name && name !== store.name) {
+      store.name = name;
+    }
 
     if (cep && cep !== store.cep) {
       const { address, coordinates } = await validateAndGetAddressAndCoords(cep);
@@ -107,7 +109,7 @@ exports.deleteStore = async (req, res) => {
     res.status(200).json({ message: "Loja excluída com sucesso." });
   } catch (error) {
     logger.error("Erro ao excluir loja.", { error: error.message, storeId: req.params.id });
-    res.status(500).json({ message: "Erro ao interno ao excluir a loja." });
+    res.status(500).json({ message: "Erro ao ao excluir a loja." });
   }
 };
 
@@ -135,6 +137,7 @@ exports.findClosestStoreByCep = async (req, res) => {
 
   try {
     const closestStore = await filterClosestStore(cep);
+
     if (closestStore) {
       logger.info(`A loja mais próxima do CEP: ${cep} é ${closestStore.name}.`);
       res.status(200).json(closestStore);
