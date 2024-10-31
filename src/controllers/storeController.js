@@ -2,14 +2,14 @@ const Store = require("../models/storeModel");
 const logger = require("../config/logger");
 const { filterNearbyStores, filterClosestStore } = require("../helpers/filterStores");
 const { validateStore, validateStoreData, validateAndGetAddressAndCoords, 
-      validateImmutableFields } = require('../helpers/storeValidate');
+      validateImmutableFields } = require('../helpers/validateStore');
 
 // criar loja
 exports.createStore = async (req, res) => {
   const { name, cep } = req.body;
 
   if (!name || !cep) {
-    logger.error("Falha na criação da loja: Nome ou CEP ausente.", { name, cep });
+    logger.error("Criação de loja falhou: Nome ou CEP ausente.", { providedData: { name, cep } });
     return res.status(400).json({ message: "Nome e CEP são campos obrigatórios." });
   }
 
@@ -30,10 +30,10 @@ exports.createStore = async (req, res) => {
 
     await newStore.save();
 
-    logger.info("Loja criada com sucesso.", { storeId: newStore._id });
+    logger.info("Loja criada com sucesso.", { storeId: newStore._id, name });
     res.status(201).json({ message: "Loja criada com sucesso!", store: newStore });
   } catch (error) {
-    logger.error("Erro ao criar a loja.", { error: error.message });
+    logger.error("Erro ao criar loja.", { error: error.message, data: { name, cep } });
     res.status(500).json({ message: error.message });
   }
 };
@@ -42,8 +42,7 @@ exports.createStore = async (req, res) => {
 exports.getAllStores = async (req, res) => {
   try {
     const stores = await Store.find();
-
-    logger.info("Todas as lojas foram buscadas com sucesso.");
+    logger.info(`Todas as lojas foram buscadas com sucesso. Total de lojas: ${stores.length}`);
     res.status(200).json(stores);
   } catch (error) {
     logger.error("Erro ao buscar todas as lojas.", { error: error.message });
@@ -90,7 +89,6 @@ exports.updateStore = async (req, res) => {
     }
 
     const updatedStore = await store.save();
-
     logger.info("Loja atualizada com sucesso.", { storeId: updatedStore._id });
     res.status(200).json({ message: "Loja atualizada com sucesso!", store: updatedStore });
   } catch (error) {
@@ -121,12 +119,14 @@ exports.findAllStoresNearCep = async (req, res) => {
     const nearbyStores = await filterNearbyStores(cep);
 
     if (nearbyStores.length > 0) {
+      logger.info(`Lojas próximas ao CEP ${cep} encontradas. Total: ${nearbyStores.length}`);
       res.status(200).json(nearbyStores);
     } else {
+      logger.warn(`Nenhuma loja encontrada dentro do raio de 100 km do CEP ${cep}`);
       res.status(404).json({ message: "Nenhuma loja encontrada dentro do raio de 100 km." });
     }
   } catch (error) {
-    logger.error(`Erro ao buscar lojas próximas ao CEP ${cep}: ${error.message}`);
+    logger.error(`Erro ao buscar lojas próximas ao CEP ${cep}.`, { error: error.message });
     res.status(500).json({ message: "Erro ao buscar lojas próximas ao CEP fornecido." });
   }
 };
@@ -139,13 +139,14 @@ exports.findClosestStoreByCep = async (req, res) => {
     const closestStore = await filterClosestStore(cep);
 
     if (closestStore) {
-      logger.info(`A loja mais próxima do CEP: ${cep} é ${closestStore.name}.`);
+      logger.info(`A loja mais próxima ao CEP ${cep} foi encontrada: ${closestStore.name}`);
       res.status(200).json(closestStore);
     } else {
+      logger.warn(`Nenhuma loja encontrada dentro do raio de 100 km para o CEP ${cep}`);
       res.status(404).json({ message: "Nenhuma loja encontrada dentro do raio de 100 km." });
     }
   } catch (error) {
-    logger.error(`Erro ao buscar a loja mais próxima ao CEP ${cep}: ${error.message}`);
+    logger.error(`Erro ao buscar a loja mais próxima ao CEP ${cep}.`, { error: error.message });
     res.status(500).json({ message: "Erro ao buscar a loja mais próxima ao CEP fornecido." });
   }
 };
