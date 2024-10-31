@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clear-logs": "del logs\\*.log && type nul > logs\\combined.log && type nul > logs\\errors.log"
   },
   "author": "Brendo Brito",
   "license": "ISC",

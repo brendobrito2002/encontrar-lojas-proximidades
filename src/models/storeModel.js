@@ -4,7 +4,7 @@ const validateCep = (cep) => {
     return /^[0-9]{8}$/.test(cep);
 }
 
-const storeSchema = mongoose.Schema({
+const storeSchema = new mongoose.Schema({
     name: {
         type: String,
         required: [true, 'Uma loja deve possuir um nome.'],
@@ -18,26 +18,22 @@ const storeSchema = mongoose.Schema({
         trim: true,
         validate: {
             validator: validateCep,
-            message: 'CEP inválido. Deve conter 8 dígitos númericos.'
+            message: 'CEP inválido. Deve conter 8 dígitos numéricos.'
         }
     },
-    rua: {
-        type: String
-    },
-    bairro: {
-        type: String  
-    },
-    cidade: {
-        type: String
-    },
-    estado: {
-        type: String
-    },
-    lat: {
-        type: Number
-    },
-    lng: {
-        type: Number
+    rua: { type: String },
+    bairro: { type: String },
+    cidade: { type: String },
+    estado: { type: String },
+    lat: { type: Number },
+    lng: { type: Number }
+}, { 
+    toJSON: { 
+        virtuals: true, 
+        transform: function(doc, ret) {
+            delete ret._id;
+            delete ret.__v;
+        }
     }
 });
 
